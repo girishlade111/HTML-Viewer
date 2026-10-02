@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/html-hint.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/eclipse.min.css">
+    <style>
+        :root {
+            --primary-color: #4a6cf7;
+            --primary-hover: #3a5fe0;
+            --background-dark: #1a1a1a;
+            --text-dark: #f8f8f8;
+            --background-light: #f8f8f8;
+            --text-light: #1a1a1a;
+            --border-radius: 8px;
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            background-color: var(--background-light);
+            color: var(--text-light);
+        }
+
+        body.dark-mode {
+            background-color: var(--background-dark);
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo svg {
+            margin-right: 10px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            position: relative;
+            width: 50px;
+            height: 24px;
+        }
+
+        .theme-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(74, 108, 247, 0.1);
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            min-height: 0;
+            height: calc(100vh - 120px);
+        }
+
+        .panel {
+            flex: 1;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-light);
+        }
+
+        .dark-mode .panel {
+            box-shadow: var(--shadow-dark);
+        }
+
+        .panel-header {
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+
+        .resizer {
+            width: 8px;
+            background-color: #e0e0e0;
+            cursor: col-resize;
+            transition: background-color 0.2s;
+        }
+
+        .resizer:hover {
+            background-color: var(--primary-color);
+        }
+
+        .dark-mode .resizer {
+            background-color: #333;
+        }
+
+        .CodeMirror {
+            height: 100% !important;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 15px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: white;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .file-actions {
+            padding-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .drag-area {
+            border: 2px dashed #ccc;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .drag-active {
+            border-color: var(--primary-color);
+            background-color: rgba(74, 108, 247, 0.05);
+        }
+
+        .error-message {
+            color: #e53935;
+            padding: 10px;
+            background-color: rgba(229, 57, 53, 0.1);
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                HTML Viewer
+            </div>
+            <div class="actions">
+                <div class="file-actions">
+                    <button id="saveBtn" class="btn btn-secondary">Save</button>
+                    <button id="loadBtn" class="btn btn-secondary">Load</button>
+                    <button id="exportBtn" class="btn btn-secondary">Export</button>
+                </div>
+                <label class="theme-toggle">
+                    <input type="checkbox" id="themeToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="panel editor-panel">
+                <div class="panel-header">
+                    <span>HTML Editor</span>
+                    <div class="panel-actions">
+                        <button id="formatBtn" class="btn btn-secondary">Format</button>
+                        <button id="copyBtn" class="btn btn-secondary">Copy</button>
+                        <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <textarea id="htmlEditor"></textarea>
+                </div>
+            </div>
+            
+            <div class="resizer" id="resizer"></div>
+            
+            <div class="panel preview-panel">
+                <div class="panel-header">
+                    <span>Preview</span>
+                    <div class="panel-actions">
+                        <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <iframe id="preview"></iframe>
+                </div>
+            </div>
+        </div>
+        
+        <div class="drag-area" id="dragArea">
+            <p>Drag & Drop HTML file here</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const themeToggle = document.getElementById('themeToggle');
+        const editorPanel = document.querySelector('.editor-panel');
+        const previewPanel = document.querySelector('.preview-panel');
+        const resizer = document.getElementById('resizer');
+        const copyBtn = document.getElementById('copyBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const formatBtn = document.getElementById('formatBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const loadBtn = document.getElementById('loadBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const dragArea = document.getElementById('dragArea');
+        const errorMessage = document.getElementById('errorMessage');
+        const preview = document.getElementById('preview');
+        
+        // Initialize CodeMirror
+        const editor = CodeMirror.fromTextArea(document.getElementById('htmlEditor'), {
+            mode: 'htmlmixed',
+            theme: 'eclipse',
+            lineNumbers: true,
+            autoCloseTags: true,
+            autoCloseBrackets: true,
+            extraKeys: {"Ctrl-Space": "autocomplete"},
+            matchTags: {bothTags: true},
+            indentUnit: 2,
+            tabSize: 2,
+            lineWrapping: true,
+            htmlMode: true
+        });
+        
+        // Set initial HTML content
+        const initialHTML = '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>HTML Preview</title>\n  <style>\n    body {\n      font-family: Arial, sans-serif;\n      margin: 20px;\n      line-height: 1.6;\n    }\n  </style>\n</head>\n<body>\n  <h1>Hello World!</h1>\n  <p>Start editing to see changes in real-time.</p>\n</body>\n</html>';
+        editor.setValue(initialHTML);
+        
+        // Update preview on editor change
+        editor.on('change', updatePreview);
+        
+        // Initial preview update
+        updatePreview();
+        
+        // Dark/Light Theme Toggle
+        themeToggle.addEventListener('change', function() {
+            document.body.classList.toggle('dark-mode');
+            editor.setOption('theme', this.checked ? 'material' : 'eclipse');
+        });
+        
+        // Panel Resizer
+        let isResizing = false;
+        let initialX;
+        let initialLeftWidth;
+        
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            initialX = e.clientX;
+            initialLeftWidth = editorPanel.getBoundingClientRect().width;
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+            });
+        });
+        
+        function handleMouseMove(e) {
+            if (!isResizing) return;
+            
+            const mainContentWidth = document.querySelector('.main-content').getBoundingClientRect().width;
+            const deltaX = e.clientX - initialX;
+            const newLeftWidth = (initialLeftWidth + deltaX) / mainContentWidth * 100;
+            
+            if (newLeftWidth > 10 && newLeftWidth < 90) {
+                editorPanel.style.flex = `0 0 ${newLeftWidth}%`;
+                previewPanel.style.flex = `0 0 ${100 - newLeftWidth - 1}%`;
+                editor.refresh();
+            }
+        }
+        
+        // Button Actions
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(editor.getValue())
+                .then(() => alert('HTML code copied to clipboard!'))
+                .catch(err => console.error('Failed to copy: ', err));
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the editor?')) {
+                editor.setValue('');
+            }
+        });
+        
+        formatBtn.addEventListener('click', () => {
+            try {
+                const formatted = formatHTML(editor.getValue());
+                editor.setValue(formatted);
+            } catch (err) {
+                showError('Could not format HTML. Check for syntax errors.');
+            }
+        });
+        
+        refreshBtn.addEventListener('click', updatePreview);
+        
+        saveBtn.addEventListener('click', () => {
+            const htmlCode = editor.getValue();
+            localStorage.setItem('savedHTML', htmlCode);
+            alert('HTML saved to local storage!');
+        });
+        
+        loadBtn.addEventListener('click', () => {
+            const savedHTML = localStorage.getItem('savedHTML');
+            if (savedHTML) {
+                editor.setValue(savedHTML);
+                updatePreview();
+            } else {
+                alert('No saved HTML found.');
+            }
+        });
+        
+        exportBtn.addEventListener('click', () => {
+            const htmlCode = editor.getValue();
+            const blob = new Blob([htmlCode], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'html-export.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+        
+        // Drag and Drop functionality
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            document.body.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dragArea.style.display = 'block';
+            dragArea.classList.add('drag-active');
+        }
+        
+        function unhighlight() {
+            dragArea.style.display = 'none';
+            dragArea.classList.remove('drag-active');
+        }
+        
+        document.body.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length) {
+                const file = files[0];
+                if (file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        editor.setValue(e.target.result);
+                        updatePreview();
+                    };
+                    reader.readAsText(file);
+                } else {
+                    showError('Please drop an HTML file.');
+                }
+            }
+            
+            unhighlight();
+        }
+        
+        // Functions
+        function updatePreview() {
+            const htmlCode = editor.getValue();
+            const iframe = document.getElementById('preview');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            try {
+                iframeDoc.open();
+                iframeDoc.write(htmlCode);
+                iframeDoc.close();
+                hideError();
+            } catch (err) {
+                showError('Error rendering HTML: ' + err.message);
+            }
+        }
+        
+        function formatHTML(html) {
+            let formatted = '';
+            let indent = '';
+            const tab = '  ';
+            
+            html.split(/>\s*</).forEach(function(element) {
+                if (element.match(/^\/\w/)) {
+                    indent = indent.substring(tab.length);
+                }
+                
+                formatted += indent + '<' + element + '>\r\n';
+                
+                if (element.match(/^<?\w[^>]*[^\/]$/) && !element.startsWith("input")) {
+                    indent += tab;
+                }
+            });
+            
+            return formatted.substring(1, formatted.length - 3);
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                if (e.key === 's') {
+                    e.preventDefault();
+                    saveBtn.click();
+                } else if (e.key === 'o') {
+                    e.preventDefault();
+                    loadBtn.click();
+                } else if (e.key === 'e') {
+                    e.preventDefault();
+                    exportBtn.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
